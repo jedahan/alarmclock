@@ -1,6 +1,7 @@
-import time
 import board
 import busio
+import sys
+import time
 from adafruit_ht16k33 import matrix
 from adafruit_framebuf import FrameBuffer, MVLSB
 from math import floor
@@ -80,15 +81,17 @@ def blinkenlights(panels):
 
 def run():
     """
-    Apps will be passed the panels, and a framebuffer
-    """
-    # Each panel can share an i2c bus, and be individually addressed
-    # After following the i2c guide on raspberrypi.org docs,
-    # These addresses were found by running i2cdetect -l
+    Make sure to follow the adafruit raspberry pi guide on enabling i2c
 
-    # TODO: Order these addresses from left to right on the physical display
-    addresses = [0x70, 0x71, 0x72, 0x74]
+    If the panels are in the incorrect order, pass the hex-encoded addresses like so:
+
+        python3 blinkenlights.py 0x70 0x74 0x71 0x72
+    """
+
     bus = board.I2C()
+    addresses = bus.scan() if len(sys.argv) < 2 else [ int(address, 16) for address in sys.argv ]
+    info(f"{addresses=}")
+
     panels = [matrix.Matrix8x8x2(bus) for address in addresses]
 
     # Clear the screen and turn the brightness down a bit
