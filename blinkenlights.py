@@ -1,6 +1,13 @@
+import random
 import sys
 import time
 from math import floor
+
+from enum import IntEnum
+
+Color = IntEnum("Color", ["OFF", "GREEN", "RED", "YELLOW"])
+
+from adafruit_framebuf import FrameBuffer, MVLSB
 
 RASPBERRY_PI = False
 
@@ -8,12 +15,6 @@ if RASPBERRY_PI:
     import board
     import busio
     from adafruit_ht16k33 import matrix
-
-from adafruit_framebuf import FrameBuffer, MVLSB
-
-from enum import IntEnum
-
-Color = IntEnum("Color", ["OFF", "GREEN", "RED", "YELLOW"])
 
 
 def makeFramebuffer(width=32, height=8):
@@ -35,6 +36,11 @@ def draw(panels, framebuffer, color=Color.RED):
     This is a 'blit' function - it takes the bits in a buffer, and
     for each bit that is set to 1, sets the display to RED, ORANGE, or YELLOW
     """
+    log(framebuffer)
+
+    if not RASPBERRY_PI:
+        return
+
     for panel in panels:
         panel.fill(Color.OFF)
 
@@ -46,6 +52,21 @@ def draw(panels, framebuffer, color=Color.RED):
             if framebuffer.pixel(x, y):
                 panel[width - x, y + 1] = color
 
+def corners(panels, framebuffer):
+    """
+    draw the bounding corners of each panel
+    """
+    framebuffer.fill(0)
+    width = int(framebuffer.width / len(panels))
+
+    for panel, number in enumerate(panels):
+        x = (number - 1) * width
+        framebuffer.pixel(x, 0, True)
+        framebuffer.pixel(x + width-1, 0, True)
+        framebuffer.pixel(x + width-1, width-1, True)
+        framebuffer.pixel(x, width-1, True)
+
+    draw(panels, framebuffer)
 
 def numbers(panels: list[any], framebuffer):
     """
@@ -56,20 +77,25 @@ def numbers(panels: list[any], framebuffer):
     If the numbers are out of order, change the order in the addresses array
     """
     framebuffer.fill(0)
-    panel_width = int(framebuffer.width / len(panels))
+    width = int(framebuffer.width / len(panels))
 
     for panel, number in enumerate(panels):
-        x = (number - 1) * panel_width
-        framebuffer.text(f"{number}", x, y=0, color=1)
+        x = (number - 1) * width
+        framebuffer.text(f"{number}", x+1, y=1, color=1)
 
-    display(framebuffer)
+    log(framebuffer)
 
     if RASPBERRY_PI:
         draw(panels, framebuffer, color=random.choice(Color))
 
 
-def blinkenlights(panels):
+def blinkenlights(panels, framebuffer):
     """testing app - random colors on all the pixels"""
+    if not RASPBERRY_PI:
+        print(f"blinkenlights app must run on a raspberry pi, choosing another app")
+        run()
+        return
+
     while True:
         panel = random.choice(panels)
         color = random.choice(Color)
@@ -80,7 +106,7 @@ def blinkenlights(panels):
         time.sleep(random.random())
 
 # ascii printer for very small framebuffers!
-def display(framebuffer):
+def log(framebuffer):
     print("." * (framebuffer.width + 2))
     for y in range(framebuffer.height):
         print(".", end="")
@@ -117,11 +143,9 @@ def run():
     else:
         panels = [ 1, 2, 3, 4]
 
-    # TODO: Add signal handling to switch between 'apps'
-    # app = random.choice([blinkenlight, numbers])
+    app = random.choice([blinkenlights, numbers, corners])
     framebuffer = makeFramebuffer()
-    numbers(panels, framebuffer)
-    #app(panels, framebuffer)
+    app(panels, framebuffer)
 
 
 if __name__ == "__main__":
