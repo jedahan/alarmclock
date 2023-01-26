@@ -107,16 +107,20 @@ def blinkenlights(panels, framebuffer):
 
 # ascii printer for very small framebuffers!
 def log(framebuffer):
-    print("." * (framebuffer.width + 2))
+    print("┏", end="")
+    print("━" * (framebuffer.width), end="")
+    print("┓")
     for y in range(framebuffer.height):
-        print(".", end="")
+        print("┃", end="")
         for x in range(framebuffer.width):
             if framebuffer.pixel(x, y):
-                print("*", end="")
+                print("█", end="")
             else:
                 print(" ", end="")
-        print(".")
-    print("." * (framebuffer.width + 2))
+        print("┃")
+    print("┗", end="")
+    print("━" * (framebuffer.width), end="")
+    print("┛")
 
 
 def run():
