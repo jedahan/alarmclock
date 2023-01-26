@@ -1,1 +1,2 @@
 adafruit-circuitpython-bitmap_font
+adafruit-circuitpython-framebuf
