@@ -10,6 +10,7 @@ Color = IntEnum("Color", ["OFF", "GREEN", "RED", "YELLOW"])
 from adafruit_framebuf import FrameBuffer, MVLSB
 
 RASPBERRY_PI = False
+MATRIX_WIDTH = 8
 
 if RASPBERRY_PI:
     import board
@@ -29,9 +30,9 @@ def makeFramebuffer(width=32, height=8):
     return FrameBuffer(buffer, width, height, MVLSB)
 
 
-def draw(panels, framebuffer, color=Color.RED):
+def draw(panel, framebuffer, color=Color.RED):
     """
-    draw expects the panels to be ordered from left to right
+    draw puts an image onto pixels
 
     This is a 'blit' function - it takes the bits in a buffer, and
     for each bit that is set to 1, sets the display to RED, ORANGE, or YELLOW
@@ -41,34 +42,42 @@ def draw(panels, framebuffer, color=Color.RED):
     if not RASPBERRY_PI:
         return
 
-    for panel in panels:
-        panel.fill(Color.OFF)
+    panel.fill(Color.OFF)
 
     width, height = framebuffer.width, framebuffer.height
 
     for x in range(width):
-        panel = panels[floor(x / width * len(panels))]
         for y in range(height):
             if framebuffer.pixel(x, y):
-                panel[width - x, y + 1] = color
+                panel[x, y] = color
 
-def corners(panels, framebuffer):
+def corners(panel, framebuffer):
     """
     draw the bounding corners of each panel
     """
-    framebuffer.fill(0)
-    width = int(framebuffer.width / len(panels))
+    framebuffer.fill(Color.OFF)
+    panels = int(framebuffer.width / MATRIX_WIDTH)
 
-    for panel, number in enumerate(panels):
-        x = (number - 1) * width
-        framebuffer.pixel(x, 0, True)
-        framebuffer.pixel(x + width-1, 0, True)
-        framebuffer.pixel(x + width-1, width-1, True)
-        framebuffer.pixel(x, width-1, True)
+    for number in range(panels):
+        offset = number * MATRIX_WIDTH
+        first = offset + 0
+        last = offset + MATRIX_WIDTH - 1
+        framebuffer.pixel(x=first, y=first, color=True)
+        framebuffer.pixel(x=first, y=last, color=True)
+        framebuffer.pixel(x=last, y=first, color=True)
+        framebuffer.pixel(x=last, y=last, color=True)
 
-    draw(panels, framebuffer)
+    yield framebuffer
 
-def numbers(panels: list[any], framebuffer):
+def outline(panel, framebuffer):
+    """
+    draw an outline
+    """
+    framebuffer.rect(0, 0, framebuffer.width, framebuffer.height, color=True)
+
+    yield framebuffer
+
+def numbers(panel, framebuffer):
     """
     For each panel in panels, write the panel number
 
@@ -76,37 +85,31 @@ def numbers(panels: list[any], framebuffer):
 
     If the numbers are out of order, change the order in the addresses array
     """
-    framebuffer.fill(0)
-    width = int(framebuffer.width / len(panels))
+    panels = int(framebuffer.width / MATRIX_WIDTH)
 
-    for panel, number in enumerate(panels):
-        x = (number - 1) * width
-        framebuffer.text(f"{number}", x+1, y=1, color=1)
+    for number in range(panels):
+        offset = number * MATRIX_WIDTH
+        framebuffer.text(f"{number}", x=offset, y=1, color=True)
 
-    log(framebuffer)
-
-    if RASPBERRY_PI:
-        draw(panels, framebuffer, color=random.choice(Color))
+    yield framebuffer
 
 
-def blinkenlights(panels, framebuffer):
-    """testing app - random colors on all the pixels"""
-    if not RASPBERRY_PI:
-        print(f"blinkenlights app must run on a raspberry pi, choosing another app")
-        run()
-        return
+def blinkenlights(panel, framebuffer):
+    """random colors on all the pixels"""
 
     while True:
-        panel = random.choice(panels)
-        color = random.choice(Color)
-        x = random.randint(0, 7)
-        y = random.randint(0, 7)
+        color = random.choice(list(Color))
+        x = random.randint(0, framebuffer.width - 1)
+        y = random.randint(0, framebuffer.height - 1)
 
-        panel[x, y] = color
+        framebuffer.pixel(x, y, color)
         time.sleep(random.random())
+        yield framebuffer
 
 # ascii printer for very small framebuffers!
 def log(framebuffer):
+    #TODO: clear terminal
+    print(chr(27) + "[2J")
     print("┏", end="")
     print("━" * (framebuffer.width), end="")
     print("┓")
@@ -137,20 +140,20 @@ def run():
         addresses = bus.scan() if len(sys.argv) < 2 else [ int(address, 16) for address in sys.argv ]
         info(f"{addresses=}")
 
-        panels = [matrix.Matrix8x8x2(bus) for address in addresses]
+        panel = matrix.Matrix8x8x2(bus, addresses)
 
         # Clear the screen and turn the brightness down a bit
-        for panel in panels:
-            panel.fill(Color.OFF)
-            panel.brightness = 0.5
+        panel.fill(Color.OFF)
+        panel.brightness = 0.5
 
     else:
-        panels = [ 1, 2, 3, 4]
+        panel = None
 
-    app = random.choice([blinkenlights, numbers, corners])
+    animation = random.choice([blinkenlights, numbers, corners, outline])
     framebuffer = makeFramebuffer()
-    app(panels, framebuffer)
 
+    for frame in animation(panel, framebuffer):
+        draw(panel, frame)
 
 if __name__ == "__main__":
     run()

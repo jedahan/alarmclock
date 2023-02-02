@@ -1,2 +1,3 @@
 adafruit-circuitpython-bitmap_font
 adafruit-circuitpython-framebuf
+adafruit-circuitpython-ht16k33
