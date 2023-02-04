@@ -3,11 +3,20 @@ import sys
 import time
 from math import floor
 
-from enum import IntEnum
+from enum import Enum, IntEnum
 
 Color = IntEnum("Color", ["OFF", "GREEN", "RED", "YELLOW"])
 
-from adafruit_framebuf import FrameBuffer, MVLSB
+
+class Terminal(Enum):
+    OFF = "\033[90m"
+    GREEN = "\033[92m"
+    RED = "\033[91m"
+    YELLOW = "\033[93m"
+    END = "\033[0m"
+
+
+from adafruit_framebuf import FrameBuffer, BICOLOR
 
 RASPBERRY_PI = False
 MATRIX_WIDTH = 8
@@ -16,6 +25,12 @@ if RASPBERRY_PI:
     import board
     import busio
     from adafruit_ht16k33 import matrix
+
+
+def unpack(color):
+    hi = (color >> 1) & 0x01
+    lo = color & 0x01
+    print(f"{hi=}, {lo=}")
 
 
 def makeFramebuffer(width=32, height=8):
@@ -27,10 +42,10 @@ def makeFramebuffer(width=32, height=8):
     to build an image, then draw the entire image to the display.
     """
     buffer = bytearray(width)  # 1 bytes tall x 8 wide x 4 panels = 32 bytes
-    return FrameBuffer(buffer, width, height, MVLSB)
+    return FrameBuffer(buffer, width, height, BICOLOR)
 
 
-def draw(panel, framebuffer, color=Color.RED):
+def draw(panel, framebuffer):
     """
     draw puts an image onto pixels
 
@@ -48,8 +63,9 @@ def draw(panel, framebuffer, color=Color.RED):
 
     for x in range(width):
         for y in range(height):
-            if framebuffer.pixel(x, y):
-                panel[x, y] = color
+            color = framebuffer.pixel(x, y)
+            panel[x, y] = color
+
 
 def corners(panel, framebuffer):
     """
@@ -69,6 +85,7 @@ def corners(panel, framebuffer):
 
     yield framebuffer
 
+
 def outline(panel, framebuffer):
     """
     draw an outline
@@ -76,6 +93,7 @@ def outline(panel, framebuffer):
     framebuffer.rect(0, 0, framebuffer.width, framebuffer.height, color=True)
 
     yield framebuffer
+
 
 def numbers(panel, framebuffer):
     """
@@ -106,20 +124,21 @@ def blinkenlights(panel, framebuffer):
         time.sleep(random.random())
         yield framebuffer
 
+
 # ascii printer for very small framebuffers!
 def log(framebuffer):
-    #TODO: clear terminal
-    print(chr(27) + "[2J")
+    end = Terminal.END.value
+    print(chr(27) + "[2J")  # clears the terminal
     print("┏", end="")
     print("━" * (framebuffer.width), end="")
     print("┓")
     for y in range(framebuffer.height):
         print("┃", end="")
         for x in range(framebuffer.width):
-            if framebuffer.pixel(x, y):
-                print("█", end="")
-            else:
-                print(" ", end="")
+            pixel = framebuffer.pixel(x, y)
+            print(f"{pixel=}")
+            color = list(Terminal)[pixel].value
+            print(f"{color}█{end}", end="")
         print("┃")
     print("┗", end="")
     print("━" * (framebuffer.width), end="")
@@ -137,7 +156,11 @@ def run():
 
     if RASPBERRY_PI:
         bus = board.I2C()
-        addresses = bus.scan() if len(sys.argv) < 2 else [ int(address, 16) for address in sys.argv ]
+        addresses = (
+            bus.scan()
+            if len(sys.argv) < 2
+            else [int(address, 16) for address in sys.argv]
+        )
         info(f"{addresses=}")
 
         panel = matrix.Matrix8x8x2(bus, addresses)
@@ -154,6 +177,7 @@ def run():
 
     for frame in animation(panel, framebuffer):
         draw(panel, frame)
+
 
 if __name__ == "__main__":
     run()
