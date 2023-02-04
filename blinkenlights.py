@@ -68,22 +68,31 @@ def draw(panel, framebuffer):
             color = framebuffer.pixel(x, y)
             panel[x, y] = color
 
+def fill(panel, framebuffer):
+    """
+    fill all pixels
+    """
+    color=random.choice(list(Color))
+    framebuffer.fill(color)
+    yield framebuffer
+
 
 def corners(panel, framebuffer):
     """
     draw the bounding corners of each panel
     """
     framebuffer.fill(Color.OFF)
-    panels = int(framebuffer.width / MATRIX_WIDTH)
 
-    for number in range(panels):
+    for number in range(4):
+        print(f"{number=}")
         offset = number * MATRIX_WIDTH
         first = offset + 0
         last = offset + MATRIX_WIDTH - 1
-        framebuffer.pixel(x=first, y=first, color=True)
-        framebuffer.pixel(x=first, y=last, color=True)
-        framebuffer.pixel(x=last, y=first, color=True)
-        framebuffer.pixel(x=last, y=last, color=True)
+        print(f"{first=} {last=}")
+        framebuffer.pixel(x=first, y=first, color=1)
+        framebuffer.pixel(x=first, y=last, color=2)
+        framebuffer.pixel(x=last, y=first, color=3)
+        framebuffer.pixel(x=last, y=last, color=1)
 
     yield framebuffer
 
@@ -173,7 +182,7 @@ def run():
     else:
         panel = None
 
-    animation = random.choice([blinkenlights, numbers, corners, outline])
+    animation = random.choice([blinkenlights, numbers, corners, outline, fill])
     framebuffer = makeFramebuffer()
 
     for frame in animation(panel, framebuffer):
