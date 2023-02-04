@@ -16,7 +16,7 @@ class Terminal(Enum):
     END = "\033[0m"
 
 
-from adafruit_framebuf import FrameBuffer, BICOLOR
+from adafruit_framebuf import FrameBuffer, GS2_HMSB
 
 RASPBERRY_PI = False
 MATRIX_WIDTH = 8
@@ -33,16 +33,18 @@ def unpack(color):
     print(f"{hi=}, {lo=}")
 
 
-def makeFramebuffer(width=32, height=8):
+def makeFramebuffer(width=32, height=8, colors=2):
     """
     The framebuffer can be thought of as a virtual image, where
-    we can map each *bit* to one of the pixels in the display.
+    we can map each *nibble* to one of the pixels in the display.
 
     Although we can manipulate the panels directly, its easier
     to build an image, then draw the entire image to the display.
     """
-    buffer = bytearray(width)  # 1 bytes tall x 8 wide x 4 panels = 32 bytes
-    return FrameBuffer(buffer, width, height, BICOLOR)
+    bits_per_byte = 8
+    buffer = bytearray(width * height * colors // bits_per_byte)
+
+    return FrameBuffer(buffer, width, height, GS2_HMSB)
 
 
 def draw(panel, framebuffer):
@@ -136,7 +138,6 @@ def log(framebuffer):
         print("┃", end="")
         for x in range(framebuffer.width):
             pixel = framebuffer.pixel(x, y)
-            print(f"{pixel=}")
             color = list(Terminal)[pixel].value
             print(f"{color}█{end}", end="")
         print("┃")
