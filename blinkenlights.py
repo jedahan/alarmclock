@@ -68,11 +68,12 @@ def draw(panel, framebuffer):
             color = framebuffer.pixel(x, y)
             panel[x, y] = color
 
+
 def fill(panel, framebuffer):
     """
     fill all pixels
     """
-    color=random.choice(list(Color))
+    color = random.choice(list(Color))
     framebuffer.fill(color)
     yield framebuffer
 
@@ -182,7 +183,16 @@ def run():
     else:
         panel = None
 
-    animation = random.choice([blinkenlights, numbers, corners, outline, fill])
+    animations = {
+            "blinkenlights": blinkenlights,
+            "numbers": numbers,
+            "corners": corners,
+            "outline": outline,
+            "fill": fill
+    }
+
+    animation = animations[sys.argv[1]] if len(sys.argv) == 2 else random.choice(animations.values())
+
     framebuffer = makeFramebuffer()
 
     for frame in animation(panel, framebuffer):
