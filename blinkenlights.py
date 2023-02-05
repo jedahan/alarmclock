@@ -47,13 +47,15 @@ def makeFramebuffer(width=32, height=8, colors=2):
     return FrameBuffer(buffer, width, height, GS2_HMSB)
 
 
-def draw(panel, framebuffer):
+def draw(panel, framebuffer, chosen_animation):
     """
     draw puts an image onto pixels
 
     This is a 'blit' function - it takes the bits in a buffer, and
     for each bit that is set to 1, sets the display to RED, ORANGE, or YELLOW
     """
+    print(chr(27) + "[2J")  # clear the terminal
+    print(chosen_animation)
     log(framebuffer)
 
     if not RASPBERRY_PI:
@@ -82,18 +84,15 @@ def corners(panel, framebuffer):
     """
     draw the bounding corners of each panel
     """
-    framebuffer.fill(Color.OFF)
 
-    for number in range(4):
-        print(f"{number=}")
-        offset = number * MATRIX_WIDTH
-        first = offset + 0
-        last = offset + MATRIX_WIDTH - 1
-        print(f"{first=} {last=}")
-        framebuffer.pixel(x=first, y=first, color=1)
-        framebuffer.pixel(x=first, y=last, color=2)
-        framebuffer.pixel(x=last, y=first, color=3)
-        framebuffer.pixel(x=last, y=last, color=1)
+    width = MATRIX_WIDTH - 1
+
+    for number in list(range(4)):
+        x = number * MATRIX_WIDTH
+        framebuffer.pixel(x=x, y=0, color=2)
+        framebuffer.pixel(x=x, y=width, color=3)
+        framebuffer.pixel(x=x+width, y=0, color=3)
+        framebuffer.pixel(x=x+width, y=width, color=2)
 
     yield framebuffer
 
@@ -139,8 +138,8 @@ def blinkenlights(panel, framebuffer):
 
 # ascii printer for very small framebuffers!
 def log(framebuffer):
+    buf = framebuffer.buf
     end = Terminal.END.value
-    print(chr(27) + "[2J")  # clears the terminal
     print("┏", end="")
     print("━" * (framebuffer.width), end="")
     print("┓")
@@ -160,10 +159,19 @@ def run():
     """
     Make sure to follow the adafruit raspberry pi guide on enabling i2c
 
+    On non-pi systems, will visualize in the terminal
+
+        python3 blinkenlights.py [animation] [address address address...]
+
+    Where animation is one of blinkenlights, numbers, corners, outline, or fill
+
     If the panels are in the incorrect order, pass the hex-encoded addresses like so:
 
         python3 blinkenlights.py 0x70 0x74 0x71 0x72
     """
+
+    #if len(sys.argv) > 1:
+    #    animation = sys.argv[1:].first(lambda arg: "x" not in arg)
 
     if RASPBERRY_PI:
         bus = board.I2C()
@@ -191,12 +199,16 @@ def run():
             "fill": fill
     }
 
-    animation = animations[sys.argv[1]] if len(sys.argv) == 2 else random.choice(animations.values())
+    random_animation = random.choice(list(animations.keys()))
+
+    chosen_animation = sys.argv[1] if len(sys.argv) == 2 else random_animation
+
+    animation = animations[chosen_animation]
 
     framebuffer = makeFramebuffer()
 
     for frame in animation(panel, framebuffer):
-        draw(panel, frame)
+        draw(panel, frame, chosen_animation)
 
 
 if __name__ == "__main__":
