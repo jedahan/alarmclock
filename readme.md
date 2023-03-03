@@ -5,3 +5,13 @@ Here are some nice animations instead
 displays - pins ??
   button - pins 12 & 14 (GPIO 18 + GND)
  speaker - pins ?? & ??
+
+Install with:
+
+
+    git clone github.com/jedahan/alarmclock
+    cd alarmclock
+    sudo cp blinkenlights.server /lib/systemd/system/
+    sudo systemctl daemon-reload
+    sudo systemctl enable blinkenlights
+    sudo systemctl start blinkenlights
