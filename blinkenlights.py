@@ -182,7 +182,7 @@ def run():
             if len(sys.argv) < 2
             else [int(address, 16) for address in sys.argv]
         )
-        info(f"{addresses=}")
+        print(f"{addresses=}")
 
         panel = matrix.Matrix8x8x2(bus, addresses)
 
