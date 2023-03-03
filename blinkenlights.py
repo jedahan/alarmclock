@@ -63,7 +63,7 @@ def draw(panel, framebuffer, chosen_animation):
     if not RASPBERRY_PI:
         return
 
-    panel.fill(Color.OFF)
+    panel.fill(Color.OFF.value)
 
     width, height = framebuffer.width, framebuffer.height
 
@@ -78,7 +78,7 @@ def fill(panel, framebuffer):
     fill all pixels
     """
     color = random.choice(list(Color))
-    framebuffer.fill(color)
+    framebuffer.fill(color.value)
     yield framebuffer
 
 
@@ -129,7 +129,7 @@ def blinkenlights(panel, framebuffer):
     """random colors on all the pixels"""
 
     while True:
-        color = random.choice(list(Color))
+        color = random.choice(list(Color)).value
         x = random.randint(0, framebuffer.width - 1)
         y = random.randint(0, framebuffer.height - 1)
 
