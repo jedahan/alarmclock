@@ -28,6 +28,9 @@ if RASPBERRY_PI:
     import busio
     from adafruit_ht16k33 import matrix
 
+    button = digitalio.DigitalInOut(board.D18)
+    button.direction = digitalio.Direction.INPUT
+    button.pull = digitalio.Pull.UP
 
 def makeFramebuffer(width=32, height=8, colors=2):
     """
@@ -167,9 +170,6 @@ def run():
         python3 blinkenlights.py 0x70 0x74 0x71 0x72
     """
 
-    #if len(sys.argv) > 1:
-    #    animation = sys.argv[1:].first(lambda arg: "x" not in arg)
-
     if RASPBERRY_PI:
         bus = board.I2C()
         addresses = (
@@ -182,7 +182,7 @@ def run():
         panel = matrix.Matrix8x8x2(bus, addresses)
 
         # Clear the screen and turn the brightness down a bit
-        panel.fill(Color.OFF)
+        panel.fill(Color.OFF.value)
         panel.brightness = 0.5
 
     else:
@@ -205,6 +205,13 @@ def run():
     framebuffer = makeFramebuffer()
 
     for frame in animation(panel, framebuffer):
+        if RASPBERRY_PI:
+            print(f"button={button.value}")
+            if button.value is False:
+                curr_index = list(animations.keys()).index(animation)
+                next_index = animation_index+1 % len(animations)
+                animation = list(animations.values())[next_index]
+
         draw(panel, frame, chosen_animation)
 
 
