@@ -174,7 +174,7 @@ def run():
         addresses = (
             bus.scan()
             if len(sys.argv) < 2
-            else [int(address, 16) for address in sys.argv]
+            else [int(address, 16) for address in sys.argv[1:]]
         )
         print(f"{addresses=}")
 
