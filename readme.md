@@ -11,6 +11,7 @@ Install with:
 
     git clone github.com/jedahan/alarmclock
     cd alarmclock
+    sudo pip3 install --requirement requirements.txt
     sudo cp blinkenlights.server /lib/systemd/system/
     sudo systemctl daemon-reload
     sudo systemctl enable blinkenlights
