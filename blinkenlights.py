@@ -5,7 +5,7 @@ from math import floor
 
 from enum import Enum, IntEnum
 
-Color = IntEnum("Color", ["OFF", "GREEN", "RED", "YELLOW"])
+Color = IntEnum("Color", ["OFF", "GREEN", "RED", "YELLOW"], start=0)
 
 
 class Terminal(Enum):
@@ -27,12 +27,6 @@ if RASPBERRY_PI:
     import board
     import busio
     from adafruit_ht16k33 import matrix
-
-
-def unpack(color):
-    hi = (color >> 1) & 0x01
-    lo = color & 0x01
-    print(f"{hi=}, {lo=}")
 
 
 def makeFramebuffer(width=32, height=8, colors=2):
