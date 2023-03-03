@@ -61,9 +61,10 @@ def draw(panel, framebuffer, chosen_animation):
 
     width, height = framebuffer.width, framebuffer.height
 
-    for x in range(width):
-        for y in range(height):
-            color = framebuffer.pixel(x, y)
+    for y in range(framebuffer.height):
+        for x in range(framebuffer.width):
+            pixel = framebuffer.pixel(x, y)
+            color = list(Color)[pixel].value
             panel[x, y] = color
 
 
