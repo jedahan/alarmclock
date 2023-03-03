@@ -17,8 +17,10 @@ class Terminal(Enum):
 
 
 from adafruit_framebuf import FrameBuffer, GS2_HMSB
+from adafruit_platformdetect import Detector
+detector = Detector()
 
-RASPBERRY_PI = False
+RASPBERRY_PI = detector.board.any_raspberry_pi
 MATRIX_WIDTH = 8
 
 if RASPBERRY_PI:
