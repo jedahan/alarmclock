@@ -26,6 +26,7 @@ MATRIX_WIDTH = 8
 if RASPBERRY_PI:
     import board
     import busio
+    import digitalio
     from adafruit_ht16k33 import matrix
 
     button = digitalio.DigitalInOut(board.D18)
