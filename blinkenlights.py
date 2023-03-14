@@ -2,6 +2,7 @@ import random
 import sys
 import time
 from math import floor
+import RPi.GPIO as GPIO
 
 from enum import Enum, IntEnum
 
@@ -29,10 +30,6 @@ if RASPBERRY_PI:
     import digitalio
     from adafruit_ht16k33 import matrix
 
-    button = digitalio.DigitalInOut(board.D18)
-    button.direction = digitalio.Direction.INPUT
-    button.pull = digitalio.Pull.UP
-
 def makeFramebuffer(width=32, height=8, colors=2):
     """
     The framebuffer can be thought of as a virtual image, where
@@ -47,44 +44,44 @@ def makeFramebuffer(width=32, height=8, colors=2):
     return FrameBuffer(buffer, width, height, GS2_HMSB)
 
 
-def draw(panel, framebuffer, chosen_animation):
+def draw(panels, framebuffer):
     """
     draw puts an image onto pixels
 
     This is a 'blit' function - it takes the bits in a buffer, and
     for each bit that is set to 1, sets the display to RED, ORANGE, or YELLOW
     """
-    print(chr(27) + "[2J")  # clear the terminal
-    print(chosen_animation)
-    log(framebuffer)
+    #print(chr(27) + "[2J")  # clear the terminal
+    #log(framebuffer)
 
     if not RASPBERRY_PI:
         return
 
-    panel.fill(Color.OFF.value)
-
     width, height = framebuffer.width, framebuffer.height
+    panel_width = int(width / len(panels))
 
     for y in range(framebuffer.height):
         for x in range(framebuffer.width):
             pixel = framebuffer.pixel(x, y)
             color = list(Color)[pixel].value
-            panel[x, y] = color
+            panel_number = floor(x / width * len(panels))
+            panel = panels[panel_number]
+            physical_x = panel_width - int(x % panel_width) - 1
+            panel.pixel(physical_x, y, color)
+
+    for panel in panels:
+        panel.show()
 
 
-def fill(panel, framebuffer):
-    """
-    fill all pixels
-    """
+def fill(panels, framebuffer):
+    """ fill all pixels """
     color = random.choice(list(Color))
     framebuffer.fill(color.value)
     yield framebuffer
 
 
-def corners(panel, framebuffer):
-    """
-    draw the bounding corners of each panel
-    """
+def corners(panels, framebuffer):
+    """ draw the bounding corners of each panel """
 
     width = MATRIX_WIDTH - 1
 
@@ -98,33 +95,29 @@ def corners(panel, framebuffer):
     yield framebuffer
 
 
-def outline(panel, framebuffer):
-    """
-    draw an outline
-    """
+def outline(panels, framebuffer):
+    """ draw an outline of the entire display """
     framebuffer.rect(0, 0, framebuffer.width, framebuffer.height, color=True)
 
     yield framebuffer
 
 
-def numbers(panel, framebuffer):
+def numbers(panels, framebuffer):
     """
     For each panel in panels, write the panel number
 
-    If there are 4 panels, you should see 1 2 3 4
+    If there are 4 panels, you should see 0 1 2 3
 
     If the numbers are out of order, change the order in the addresses array
     """
-    panels = int(framebuffer.width / MATRIX_WIDTH)
-
-    for number in range(panels):
+    for number in range(len(panels)):
         offset = number * MATRIX_WIDTH
         framebuffer.text(f"{number}", x=offset, y=1, color=True)
 
     yield framebuffer
 
 
-def blinkenlights(panel, framebuffer):
+def blinkenlights(panels, framebuffer):
     """random colors on all the pixels"""
 
     while True:
@@ -155,7 +148,6 @@ def log(framebuffer):
     print("━" * (framebuffer.width), end="")
     print("┛")
 
-
 def run():
     """
     Make sure to follow the adafruit raspberry pi guide on enabling i2c
@@ -171,6 +163,20 @@ def run():
         python3 blinkenlights.py 0x70 0x74 0x71 0x72
     """
 
+    panels = []
+
+    framebuffer = makeFramebuffer()
+
+    animations = [
+      blinkenlights,
+      numbers,
+      corners,
+      outline,
+      fill
+    ]
+
+    animation_index = random.randint(0, len(animations)-1)
+
     if RASPBERRY_PI:
         bus = board.I2C()
         addresses = (
@@ -178,43 +184,38 @@ def run():
             if len(sys.argv) < 2
             else [int(address, 16) for address in sys.argv[1:]]
         )
-        print(f"{addresses=}")
 
-        panel = matrix.Matrix8x8x2(bus, addresses)
+        panels = [matrix.Matrix8x8x2(bus, address, auto_write=False) for address in addresses]
 
-        # Clear the screen and turn the brightness down a bit
-        panel.fill(Color.OFF.value)
-        panel.brightness = 0.5
+        for index, panel in enumerate(panels):
+            panel.fill(index or 1)
+            print(f"{panel.i2c_device[0].device_address}")
+            panel.brightness = 0.5
 
-    else:
-        panel = None
+    print(f"{animation_index=}")
+    animation = animations[animation_index](panels, framebuffer)
 
-    animations = {
-            "blinkenlights": blinkenlights,
-            "numbers": numbers,
-            "corners": corners,
-            "outline": outline,
-            "fill": fill
-    }
+    def increment_animation(channel):
+        nonlocal animation_index
+        nonlocal animation
+        nonlocal framebuffer
+        for panel in panels:
+            panel.fill(Color.OFF.value)
+        animation_index = (animation_index + 1) % len(animations)
+        animation = animations[animation_index](panel, framebuffer)
+        framebuffer = makeFramebuffer()
 
-    random_animation = random.choice(list(animations.keys()))
+    channel = 18
+    GPIO.setup(channel, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    GPIO.add_event_detect(channel, GPIO.RISING, callback=increment_animation)
 
-    chosen_animation = sys.argv[1] if len(sys.argv) == 2 else random_animation
+    while True:
+        current_animation_index = animation_index
 
-    animation = animations[chosen_animation]
-
-    framebuffer = makeFramebuffer()
-
-    for frame in animation(panel, framebuffer):
-        if RASPBERRY_PI:
-            print(f"button={button.value}")
-            if button.value is False:
-                curr_index = list(animations.keys()).index(animation)
-                next_index = animation_index+1 % len(animations)
-                animation = list(animations.values())[next_index]
-
-        draw(panel, frame, chosen_animation)
-
+        for frame in animation:
+            if animation_index != current_animation_index:
+                break
+            draw(panels, frame)
 
 if __name__ == "__main__":
     run()

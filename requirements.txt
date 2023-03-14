@@ -1,4 +1,5 @@
 adafruit-circuitpython-bitmap_font
+adafruit-circuitpython-debouncer
+adafruit-circuitpython-ht16k33
 Adafruit-PlatformDetect
 git+https://github.com/jedahan/Adafruit_CircuitPython_framebuf.git@fill#egg=adafruit-circuitpython-framebuf
-adafruit-circuitpython-ht16k33

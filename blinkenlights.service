@@ -5,7 +5,7 @@ After=multi-user.target
 [Service]
 Type=simple
 Restart=always
-ExecStart=/usr/bin/python3 /home/micro/alarmclock/blinkenlights.py
+ExecStart=/usr/bin/python3 /home/micro/alarmclock/blinkenlights.py 0x70 0x74 0x71 0x72
 
 [Install]
 WantedBy=multi-user.target
